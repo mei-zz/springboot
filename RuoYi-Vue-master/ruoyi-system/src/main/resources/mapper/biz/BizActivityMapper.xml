@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.biz.BizActivityMapper">
+
+    <select id="selectActivityList" resultType="map">
+        select a.activity_id as activityId,
+               a.creator_user_id as creatorUserId,
+               a.title as title,
+               a.activity_type as activityType,
+               a.location as location,
+               a.start_time as startTime,
+               a.end_time as endTime,
+               a.pet_size_limit as petSizeLimit,
+               a.max_participants as maxParticipants,
+               a.current_participants as currentParticipants,
+               a.status as status,
+               a.review_status as reviewStatus,
+               a.review_by as reviewBy,
+               a.review_time as reviewTime,
+               a.review_note as reviewNote,
+               a.description as description,
+               a.create_time as createTime,
+               u.nick_name as creatorName
+        from biz_community_activity a
+        left join sys_user u on u.user_id = a.creator_user_id
+        <where>
+            <if test="creatorUserId != null">and a.creator_user_id = #{creatorUserId}</if>
+            <if test="reviewStatus != null and reviewStatus != ''">and a.review_status = #{reviewStatus}</if>
+        </where>
+        order by a.create_time desc
+    </select>
+
+    <insert id="insertActivity" parameterType="map" useGeneratedKeys="true" keyProperty="activityId">
+        insert into biz_community_activity
+        (
+            creator_user_id,
+            title,
+            activity_type,
+            location,
+            start_time,
+            end_time,
+            pet_size_limit,
+            max_participants,
+            current_participants,
+            status,
+            review_status,
+            description,
+            create_by,
+            create_time,
+            update_by,
+            update_time
+        )
+        values
+        (
+            #{creatorUserId},
+            #{title},
+            #{activityType},
+            #{location},
+            #{startTime},
+            #{endTime},
+            #{petSizeLimit},
+            #{maxParticipants},
+            0,
+            #{status},
+            #{reviewStatus},
+            #{description},
+            #{createBy},
+            sysdate(),
+            #{updateBy},
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateActivityReview">
+        update biz_community_activity
+        set review_status = #{reviewStatus},
+            review_note = #{reviewNote},
+            review_by = #{reviewBy},
+            review_time = sysdate(),
+            status = case when #{reviewStatus} = '1' then '1' else '3' end,
+            update_by = #{reviewBy},
+            update_time = sysdate()
+        where activity_id = #{activityId}
+    </update>
+
+    <select id="selectActivityById" resultType="map">
+        select activity_id as activityId,
+               title,
+               review_status as reviewStatus,
+               max_participants as maxParticipants,
+               current_participants as currentParticipants,
+               status,
+               start_time as startTime,
+               end_time as endTime
+        from biz_community_activity
+        where activity_id = #{activityId}
+        limit 1
+    </select>
+
+    <select id="countSignup" resultType="int">
+        select count(1)
+        from biz_activity_signup
+        where activity_id = #{activityId}
+          and user_id = #{userId}
+          and pet_id = #{petId}
+          and status = '0'
+    </select>
+
+    <insert id="insertSignup">
+        insert into biz_activity_signup
+        (
+            activity_id,
+            user_id,
+            pet_id,
+            status,
+            create_by,
+            create_time,
+            update_by,
+            update_time
+        )
+        values
+        (
+            #{activityId},
+            #{userId},
+            #{petId},
+            '0',
+            #{createBy},
+            sysdate(),
+            #{updateBy},
+            sysdate()
+        )
+    </insert>
+
+    <update id="increaseParticipants">
+        update biz_community_activity
+        set current_participants = current_participants + 1,
+            update_time = sysdate()
+        where activity_id = #{activityId}
+          and (max_participants is null or max_participants = 0 or current_participants &lt; max_participants)
+    </update>
+
+    <select id="selectMySignupList" resultType="map">
+        select s.signup_id as signupId,
+               s.activity_id as activityId,
+               s.pet_id as petId,
+               s.status as signupStatus,
+               s.create_time as signupTime,
+               a.title as activityTitle,
+               a.activity_type as activityType,
+               a.location as location,
+               a.start_time as startTime,
+               a.end_time as endTime,
+               p.pet_name as petName
+        from biz_activity_signup s
+        left join biz_community_activity a on a.activity_id = s.activity_id
+        left join biz_pet_info p on p.pet_id = s.pet_id
+        where s.user_id = #{userId}
+          and s.status = '0'
+        order by s.create_time desc
+    </select>
+
+</mapper>

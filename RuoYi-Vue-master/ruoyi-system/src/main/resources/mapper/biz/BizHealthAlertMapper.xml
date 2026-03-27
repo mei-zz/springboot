@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.biz.BizHealthAlertMapper">
+
+    <resultMap id="BizHealthAlertResult" type="BizHealthAlert">
+        <result property="alertId" column="alert_id"/>
+        <result property="petId" column="pet_id"/>
+        <result property="recordId" column="record_id"/>
+        <result property="alertType" column="alert_type"/>
+        <result property="alertLevel" column="alert_level"/>
+        <result property="alertContent" column="alert_content"/>
+        <result property="alertTime" column="alert_time"/>
+        <result property="processStatus" column="process_status"/>
+        <result property="processNote" column="process_note"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectHealthAlertColumns">
+        select alert_id, pet_id, record_id, alert_type, alert_level, alert_content,
+               alert_time, process_status, process_note, create_by, create_time,
+               update_by, update_time, remark
+        from biz_health_alert
+    </sql>
+
+    <select id="selectHealthAlertById" parameterType="Long" resultMap="BizHealthAlertResult">
+        <include refid="selectHealthAlertColumns"/>
+        where alert_id = #{alertId}
+    </select>
+
+    <select id="selectHealthAlertList" parameterType="BizHealthAlert" resultMap="BizHealthAlertResult">
+        <include refid="selectHealthAlertColumns"/>
+        <where>
+            <if test="petId != null">and pet_id = #{petId}</if>
+            <if test="alertLevel != null and alertLevel != ''">and alert_level = #{alertLevel}</if>
+            <if test="processStatus != null and processStatus != ''">and process_status = #{processStatus}</if>
+        </where>
+        order by process_status asc, alert_time desc
+    </select>
+
+    <insert id="insertHealthAlert" parameterType="BizHealthAlert" useGeneratedKeys="true" keyProperty="alertId">
+        insert into biz_health_alert (
+            pet_id, record_id, alert_type, alert_level, alert_content, alert_time,
+            process_status, process_note, create_by, create_time, update_by, update_time, remark
+        ) values (
+            #{petId}, #{recordId}, #{alertType}, #{alertLevel}, #{alertContent}, #{alertTime},
+            #{processStatus}, #{processNote}, #{createBy}, sysdate(), #{updateBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateHealthAlert" parameterType="BizHealthAlert">
+        update biz_health_alert
+        <set>
+            <if test="processStatus != null and processStatus != ''">process_status = #{processStatus},</if>
+            <if test="processNote != null">process_note = #{processNote},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where alert_id = #{alertId}
+    </update>
+
+    <delete id="deleteHealthAlertById" parameterType="Long">
+        delete from biz_health_alert where alert_id = #{alertId}
+    </delete>
+
+    <delete id="deleteHealthAlertByIds">
+        delete from biz_health_alert where alert_id in
+        <foreach collection="array" item="alertId" open="(" separator="," close=")">
+            #{alertId}
+        </foreach>
+    </delete>
+
+</mapper>

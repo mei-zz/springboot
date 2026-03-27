@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.biz.BizSocialMatchMapper">
+
+    <resultMap id="BizSocialMatchResult" type="BizSocialMatch">
+        <result property="matchId" column="match_id"/>
+        <result property="initiatorUserId" column="initiator_user_id"/>
+        <result property="receiverUserId" column="receiver_user_id"/>
+        <result property="initiatorPetId" column="initiator_pet_id"/>
+        <result property="receiverPetId" column="receiver_pet_id"/>
+        <result property="matchScore" column="match_score"/>
+        <result property="matchedTags" column="matched_tags"/>
+        <result property="status" column="status"/>
+        <result property="inviteMessage" column="invite_message"/>
+        <result property="inviteType" column="invite_type"/>
+        <result property="inviteTime" column="invite_time"/>
+        <result property="eventTime" column="event_time"/>
+        <result property="eventLocation" column="event_location"/>
+        <result property="responseTime" column="response_time"/>
+        <result property="initiatorPetName" column="initiator_pet_name"/>
+        <result property="receiverPetName" column="receiver_pet_name"/>
+        <result property="initiatorUserName" column="initiator_user_name"/>
+        <result property="receiverUserName" column="receiver_user_name"/>
+        <result property="friendLinked" column="friend_linked"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <insert id="insertSocialMatch" parameterType="BizSocialMatch" useGeneratedKeys="true" keyProperty="matchId">
+        insert into biz_social_match
+        (
+            initiator_user_id,
+            receiver_user_id,
+            initiator_pet_id,
+            receiver_pet_id,
+            match_score,
+            matched_tags,
+            status,
+            invite_message,
+            invite_type,
+            invite_time,
+            event_time,
+            event_location,
+            create_by,
+            create_time,
+            update_by,
+            update_time,
+            remark
+        )
+        values
+        (
+            #{initiatorUserId},
+            #{receiverUserId},
+            #{initiatorPetId},
+            #{receiverPetId},
+            #{matchScore},
+            #{matchedTags},
+            #{status},
+            #{inviteMessage},
+            #{inviteType},
+            #{inviteTime},
+            #{eventTime},
+            #{eventLocation},
+            #{createBy},
+            sysdate(),
+            #{updateBy},
+            sysdate(),
+            #{remark}
+        )
+    </insert>
+
+    <select id="selectSocialMatchById" parameterType="Long" resultMap="BizSocialMatchResult">
+        select m.match_id, m.initiator_user_id, m.receiver_user_id, m.initiator_pet_id, m.receiver_pet_id,
+               m.match_score, m.matched_tags, m.status, m.invite_message, m.invite_type, m.invite_time,
+               m.event_time, m.event_location, m.response_time, m.create_by, m.create_time,
+               m.update_by, m.update_time, m.remark,
+               p1.pet_name as initiator_pet_name, p2.pet_name as receiver_pet_name,
+               u1.nick_name as initiator_user_name, u2.nick_name as receiver_user_name,
+               0 as friend_linked
+        from biz_social_match m
+        left join biz_pet_info p1 on p1.pet_id = m.initiator_pet_id
+        left join biz_pet_info p2 on p2.pet_id = m.receiver_pet_id
+        left join sys_user u1 on u1.user_id = m.initiator_user_id
+        left join sys_user u2 on u2.user_id = m.receiver_user_id
+        where m.match_id = #{matchId}
+        limit 1
+    </select>
+
+    <select id="selectSocialMatchListByUserId" parameterType="Long" resultMap="BizSocialMatchResult">
+        select m.match_id, m.initiator_user_id, m.receiver_user_id, m.initiator_pet_id, m.receiver_pet_id,
+               m.match_score, m.matched_tags, m.status, m.invite_message, m.invite_type, m.invite_time,
+               m.event_time, m.event_location, m.response_time, m.create_by, m.create_time,
+               m.update_by, m.update_time, m.remark,
+               p1.pet_name as initiator_pet_name, p2.pet_name as receiver_pet_name,
+               u1.nick_name as initiator_user_name, u2.nick_name as receiver_user_name,
+               case when exists (
+                    select 1 from biz_social_friend f
+                    where f.user_id = #{userId}
+                      and f.source_match_id = m.match_id
+                      and f.status = '0'
+               ) then 1 else 0 end as friend_linked
+        from biz_social_match m
+        left join biz_pet_info p1 on p1.pet_id = m.initiator_pet_id
+        left join biz_pet_info p2 on p2.pet_id = m.receiver_pet_id
+        left join sys_user u1 on u1.user_id = m.initiator_user_id
+        left join sys_user u2 on u2.user_id = m.receiver_user_id
+        where m.initiator_user_id = #{userId} or m.receiver_user_id = #{userId}
+        order by coalesce(m.invite_time, m.create_time) desc, m.match_id desc
+    </select>
+
+    <update id="updateSocialMatchResponse" parameterType="BizSocialMatch">
+        update biz_social_match
+        <set>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="responseTime != null">response_time = #{responseTime},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where match_id = #{matchId}
+    </update>
+
+    <select id="countFriendRelationByPets" resultType="int">
+        select count(1)
+        from biz_social_friend
+        where pet_id = #{petId}
+          and friend_pet_id = #{friendPetId}
+          and status = '0'
+    </select>
+
+    <insert id="insertSocialFriend">
+        insert into biz_social_friend
+        (
+            user_id,
+            friend_user_id,
+            pet_id,
+            friend_pet_id,
+            source_match_id,
+            status,
+            create_by,
+            create_time,
+            update_by,
+            update_time
+        )
+        values
+        (
+            #{userId},
+            #{friendUserId},
+            #{petId},
+            #{friendPetId},
+            #{sourceMatchId},
+            '0',
+            #{createBy},
+            sysdate(),
+            #{updateBy},
+            sysdate()
+        )
+    </insert>
+
+    <select id="selectFriendListByUserId" parameterType="Long" resultType="map">
+        select f.friend_id as friendId,
+               f.user_id as userId,
+               f.friend_user_id as friendUserId,
+               f.pet_id as petId,
+               f.friend_pet_id as friendPetId,
+               f.source_match_id as sourceMatchId,
+               f.create_time as createTime,
+               p.pet_name as petName,
+               fp.pet_name as friendPetName,
+               fp.breed as friendBreed,
+               u.nick_name as friendUserName
+        from biz_social_friend f
+        left join biz_pet_info p on p.pet_id = f.pet_id
+        left join biz_pet_info fp on fp.pet_id = f.friend_pet_id
+        left join sys_user u on u.user_id = f.friend_user_id
+        where f.user_id = #{userId}
+          and f.status = '0'
+        order by f.create_time desc
+    </select>
+
+    <select id="selectSocialStatsByUserId" parameterType="Long" resultType="map">
+        select
+            coalesce(sum(case when m.status = '2' then 1 else 0 end), 0) as successInteractionCount,
+            coalesce(sum(case when m.status = '1' and m.receiver_user_id = #{userId} then 1 else 0 end), 0) as pendingReceivedCount,
+            coalesce(sum(case when m.status = '1' and m.initiator_user_id = #{userId} then 1 else 0 end), 0) as pendingSentCount,
+            (
+                select count(1)
+                from biz_social_friend f
+                where f.user_id = #{userId}
+                  and f.status = '0'
+            ) as friendCount,
+            (
+                coalesce(sum(case when m.status = '2' then 1 else 0 end), 0) * 10 +
+                (
+                    select count(1)
+                    from biz_social_friend f
+                    where f.user_id = #{userId}
+                      and f.status = '0'
+                ) * 20
+            ) as socialActivityScore
+        from biz_social_match m
+        where m.initiator_user_id = #{userId}
+           or m.receiver_user_id = #{userId}
+    </select>
+
+    <select id="selectSocialRankList" resultType="map">
+        select p.pet_id as petId,
+               p.pet_name as petName,
+               p.breed as breed,
+               u.nick_name as ownerName,
+               coalesce(s.success_count, 0) as successInteractionCount,
+               coalesce(f.friend_count, 0) as friendCount,
+               coalesce(s.success_count, 0) * 10 + coalesce(f.friend_count, 0) * 20 as socialActivityScore
+        from biz_pet_info p
+        left join sys_user u on u.user_id = p.owner_user_id
+        left join (
+            select pet_id, count(1) as success_count
+            from (
+                select initiator_pet_id as pet_id from biz_social_match where status = '2'
+                union all
+                select receiver_pet_id as pet_id from biz_social_match where status = '2'
+            ) t
+            group by pet_id
+        ) s on s.pet_id = p.pet_id
+        left join (
+            select pet_id, count(1) as friend_count
+            from biz_social_friend
+            where status = '0'
+            group by pet_id
+        ) f on f.pet_id = p.pet_id
+        where p.status = '0'
+        order by socialActivityScore desc, successInteractionCount desc, friendCount desc, p.pet_id asc
+    </select>
+
+</mapper>

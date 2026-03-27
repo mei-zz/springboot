@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.biz.BizContentMapper">
+
+    <select id="selectContentList" resultType="map">
+        select c.content_id as contentId,
+               c.creator_user_id as creatorUserId,
+               c.pet_id as petId,
+               c.content_type as contentType,
+               c.title as title,
+               c.summary as summary,
+               c.content_text as contentText,
+               c.tags as tags,
+               c.media_url as mediaUrl,
+               c.status as status,
+               c.review_status as reviewStatus,
+               c.review_by as reviewBy,
+               c.review_time as reviewTime,
+               c.review_note as reviewNote,
+               c.create_time as createTime,
+               u.nick_name as creatorName,
+               p.pet_name as petName
+        from biz_content_post c
+        left join sys_user u on u.user_id = c.creator_user_id
+        left join biz_pet_info p on p.pet_id = c.pet_id
+        <where>
+            <if test="status != null and status != ''">and c.status = #{status}</if>
+            <if test="creatorUserId != null">and c.creator_user_id = #{creatorUserId}</if>
+            <if test="reviewStatus != null and reviewStatus != ''">and c.review_status = #{reviewStatus}</if>
+        </where>
+        order by c.create_time desc
+    </select>
+
+    <insert id="insertContent" parameterType="map" useGeneratedKeys="true" keyProperty="contentId">
+        insert into biz_content_post
+        (
+            creator_user_id,
+            pet_id,
+            content_type,
+            title,
+            summary,
+            content_text,
+            tags,
+            media_url,
+            status,
+            review_status,
+            create_by,
+            create_time,
+            update_by,
+            update_time
+        )
+        values
+        (
+            #{creatorUserId},
+            #{petId},
+            #{contentType},
+            #{title},
+            #{summary},
+            #{contentText},
+            #{tags},
+            #{mediaUrl},
+            '0',
+            #{reviewStatus},
+            #{createBy},
+            sysdate(),
+            #{updateBy},
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateContentReview">
+        update biz_content_post
+        set review_status = #{reviewStatus},
+            review_note = #{reviewNote},
+            review_by = #{reviewBy},
+            review_time = sysdate(),
+            status = case when #{reviewStatus} = '1' then '0' else '1' end,
+            update_by = #{reviewBy},
+            update_time = sysdate()
+        where content_id = #{contentId}
+    </update>
+
+    <select id="selectRecommendedContentByUserId" resultType="map">
+        select c.content_id as contentId,
+               c.title as title,
+               c.summary as summary,
+               c.content_text as contentText,
+               c.content_type as contentType,
+               c.tags as tags,
+               c.create_time as createTime,
+               u.nick_name as creatorName,
+               concat('匹配标签: ',
+                   substring_index(
+                     substring_index(c.tags, ',', 1), ',', -1
+                   )
+               ) as recommendReason
+        from biz_content_post c
+        left join sys_user u on u.user_id = c.creator_user_id
+        where c.review_status = '1'
+          and c.status = '0'
+          and exists (
+             select 1
+             from biz_pet_info p
+             where p.owner_user_id = #{userId}
+               and p.status = '0'
+               and (
+                   c.tags like concat('%', p.breed, '%')
+                   or (
+                       p.age_month is not null and (
+                           (p.age_month &lt; 12 and c.tags like '%幼宠%')
+                           or (p.age_month &gt;= 12 and p.age_month &lt; 84 and c.tags like '%成宠%')
+                           or (p.age_month &gt;= 84 and c.tags like '%老年宠%')
+                       )
+                   )
+               )
+          )
+        order by c.create_time desc
+    </select>
+
+</mapper>

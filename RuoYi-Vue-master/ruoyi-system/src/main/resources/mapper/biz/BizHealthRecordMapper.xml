@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.biz.BizHealthRecordMapper">
+
+    <resultMap id="BizHealthRecordResult" type="BizHealthRecord">
+        <result property="recordId" column="record_id"/>
+        <result property="petId" column="pet_id"/>
+        <result property="recordDate" column="record_date"/>
+        <result property="weightKg" column="weight_kg"/>
+        <result property="foodIntakeG" column="food_intake_g"/>
+        <result property="defecationStatus" column="defecation_status"/>
+        <result property="mentalStatus" column="mental_status"/>
+        <result property="symptomDesc" column="symptom_desc"/>
+        <result property="isAbnormal" column="is_abnormal"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectHealthRecordColumns">
+        select record_id, pet_id, record_date, weight_kg, food_intake_g, defecation_status,
+               mental_status, symptom_desc, is_abnormal, create_by, create_time,
+               update_by, update_time, remark
+        from biz_health_record
+    </sql>
+
+    <select id="selectHealthRecordById" parameterType="Long" resultMap="BizHealthRecordResult">
+        <include refid="selectHealthRecordColumns"/>
+        where record_id = #{recordId}
+    </select>
+
+    <select id="selectHealthRecordList" parameterType="BizHealthRecord" resultMap="BizHealthRecordResult">
+        <include refid="selectHealthRecordColumns"/>
+        <where>
+            <if test="petId != null">and pet_id = #{petId}</if>
+            <if test="isAbnormal != null and isAbnormal != ''">and is_abnormal = #{isAbnormal}</if>
+            <if test="defecationStatus != null and defecationStatus != ''">and defecation_status = #{defecationStatus}</if>
+            <if test="mentalStatus != null and mentalStatus != ''">and mental_status = #{mentalStatus}</if>
+        </where>
+        order by record_date desc, create_time desc
+    </select>
+
+    <insert id="insertHealthRecord" parameterType="BizHealthRecord" useGeneratedKeys="true" keyProperty="recordId">
+        insert into biz_health_record (
+            pet_id, record_date, weight_kg, food_intake_g, defecation_status,
+            mental_status, symptom_desc, is_abnormal, create_by, create_time,
+            update_by, update_time, remark
+        ) values (
+            #{petId}, #{recordDate}, #{weightKg}, #{foodIntakeG}, #{defecationStatus},
+            #{mentalStatus}, #{symptomDesc}, #{isAbnormal}, #{createBy}, sysdate(),
+            #{updateBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <delete id="deleteHealthRecordById" parameterType="Long">
+        delete from biz_health_record where record_id = #{recordId}
+    </delete>
+
+    <delete id="deleteHealthRecordByIds">
+        delete from biz_health_record where record_id in
+        <foreach collection="array" item="recordId" open="(" separator="," close=")">
+            #{recordId}
+        </foreach>
+    </delete>
+
+</mapper>
